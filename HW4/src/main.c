@@ -77,7 +77,7 @@ char *generateMessage()
     for (int i = 0; i < length - 1; i++)
     {
         char *word = remove_from_index(dictionary_as_list, i % dictionary_as_list->size);
-        add_at_index(message, word, i + 1);
+        add_at_index(message, word, i);
     }
 
     // Adds the word "half" at the half way point in the list (round down if half is not an integer, +1 is because of line 71 adjustment)
@@ -93,7 +93,7 @@ char *generateMessage()
         int word_size = strlen(word);
 
         // Calculates the new size needed for string message for the word to be appended.
-        total_size = strlen(string_message) + 1 + ((i == 0)? word_size : word_size + 1);
+        total_size = ((string_message) ? strlen(string_message): 0) + word_size + 1;
 
         // Reserves the memory space in the heap
         string_message = realloc(string_message, total_size);

@@ -20,7 +20,7 @@
 #include "arraylist_tests.h"
 
 
-int dictionary_length = 17;
+int dictionary_length = 15;
 char *dictionary[] = {
     "this",
     "rocks",
