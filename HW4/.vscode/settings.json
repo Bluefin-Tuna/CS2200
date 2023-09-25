@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "arraylist.h": "c",
+        "chrono": "c"
+    }
+}
