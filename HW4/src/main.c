@@ -93,7 +93,7 @@ char *generateMessage()
         int word_size = strlen(word);
 
         // Calculates the new size needed for string message for the word to be appended.
-        total_size = ((string_message) ? strlen(string_message): 0) + word_size + 1;
+        total_size = ((string_message) ? strlen(string_message): 0) + 1 + ((i == 0) ? word_size : word_size + 1);
 
         // Reserves the memory space in the heap
         string_message = realloc(string_message, total_size);
