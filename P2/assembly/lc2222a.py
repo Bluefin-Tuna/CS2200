@@ -64,6 +64,9 @@ assert(R_UNUSED_SIZE > 0)  # Sanity check
 
 RELATIVE_UNUSED_BITS = 4
 
+OR_MODE_BITS = 1
+OR_UNUSED_SIZE = 15
+
 RE_BLANK = re.compile(r'^\s*(!.*)?$')
 RE_PARTS = re.compile(
     r'^\s*((?P<Label>\w+):)?\s*((?P<Opcode>\.?[\w]+)(?P<Operands>[^!]*))?(!.*)?')
@@ -352,7 +355,7 @@ class beq(Instruction):
 
     @classmethod
     def opcode(cls):
-        return 10
+        return 5
 
     @classmethod
     def create(cls, operands, pc, instruction):
@@ -403,7 +406,7 @@ class blt(Instruction):
         result_list.append(parse_value(match.group('Offset'), PC_OFFSET_SIZE , pc))
 
         return ''.join(result_list)
-
+    
     def binary(self):
         return zero_extend(bin(self.opcode()), OPCODE_WIDTH) + self.bin_operands
 
@@ -412,7 +415,7 @@ class bgt(Instruction):
 
     @classmethod
     def opcode(cls):
-        return 9
+        return 10
 
     @classmethod
     def create(cls, operands, pc, instruction):
@@ -441,7 +444,7 @@ class lea(Instruction):
 
     @classmethod
     def opcode(cls):
-        return 5
+        return 9
 
     @classmethod
     def create(cls, operands, pc, instruction):
@@ -509,8 +512,8 @@ class jalr(Instruction):
             raise RuntimeError(
                 "Operands '{}' are in an incorrect format.".format(operands.strip()))
 
-        result_list.append(parse_register(match.group('AT')))
         result_list.append(parse_register(match.group('RA')))
+        result_list.append(parse_register(match.group('AT')))
 
         return ''.join(result_list)
 
@@ -518,19 +521,6 @@ class jalr(Instruction):
         padded_opcode = zero_extend(bin(self.opcode()), OPCODE_WIDTH)
         return zero_extend(padded_opcode + self.bin_operands, BIT_WIDTH, pad_right=True)
 
-class halt(Instruction):
-    @classmethod
-    def opcode(cls):
-        return 7
-
-    @classmethod
-    def create(cls, operands, pc, instruction):
-        return [cls(operands, pc, instruction)]
-
-    def binary(self):
-        padded_opcode = zero_extend(bin(self.opcode()), OPCODE_WIDTH)
-        return zero_extend(padded_opcode, BIT_WIDTH, pad_right=True)
-        
 class xor(Instruction):
     __RE_XOR = re.compile(r'^\s*(?P<RX>\$\w+?)\s*,\s*(?P<RY>\$\w+?)\s*,\s*(?P<RZ>\$\w+?)\s*$')
 
@@ -569,10 +559,11 @@ class xor(Instruction):
     def binary(self):
         return zero_extend(bin(self.opcode()), OPCODE_WIDTH) + self.bin_operands
 
-class ei(Instruction):
+
+class halt(Instruction):
     @classmethod
     def opcode(cls):
-        return 11
+        return 7
 
     @classmethod
     def create(cls, operands, pc, instruction):
@@ -582,7 +573,7 @@ class ei(Instruction):
         padded_opcode = zero_extend(bin(self.opcode()), OPCODE_WIDTH)
         return zero_extend(padded_opcode, BIT_WIDTH, pad_right=True)
 
-class di(Instruction):
+class ei(Instruction):
     @classmethod
     def opcode(cls):
         return 12
@@ -595,10 +586,23 @@ class di(Instruction):
         padded_opcode = zero_extend(bin(self.opcode()), OPCODE_WIDTH)
         return zero_extend(padded_opcode, BIT_WIDTH, pad_right=True)
 
-class reti(Instruction):
+class di(Instruction):
     @classmethod
     def opcode(cls):
         return 13
+
+    @classmethod
+    def create(cls, operands, pc, instruction):
+        return [cls(operands, pc, instruction)]
+
+    def binary(self):
+        padded_opcode = zero_extend(bin(self.opcode()), OPCODE_WIDTH)
+        return zero_extend(padded_opcode, BIT_WIDTH, pad_right=True)
+
+class reti(Instruction):
+    @classmethod
+    def opcode(cls):
+        return 14
 
     @classmethod
     def create(cls, operands, pc, instruction):
@@ -613,7 +617,7 @@ class IN(Instruction):
 
     @classmethod
     def opcode(cls):
-        return 14
+        return 15
 
     @classmethod
     def create(cls, operands, pc, instruction):

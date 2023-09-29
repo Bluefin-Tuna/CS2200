@@ -1,42 +1,25 @@
-! Fall 2023 Revisions 
+! Fall 2023 Revisions
 
 ! This program executes pow as a test program using the LC 2222 calling convention
 ! Check your registers ($v0) and memory to see if it is consistent with this program
 
-! vector table
-vector0:
-        .fill 0x00000000                        ! device ID 0
-        .fill 0x00000000                        ! device ID 1
-        .fill 0x00000000                        ! ...
-        .fill 0x00000000
-        .fill 0x00000000
-        .fill 0x00000000
-        .fill 0x00000000
-        .fill 0x00000000                        ! device ID 7
-        ! end vector table
-
 main:	lea $sp, initsp                         ! initialize the stack pointer
         lw $sp, 0($sp)                          ! finish initialization
-
-        add $zero, $zero, $zero                 ! TODO FIX ME: Install timer interrupt handler into vector table
-
-
-        add $zero, $zero, $zero                 ! TODO FIX ME: Install distance tracker interrupt handler into vector table
-
-
-        lea $t0, minval
-        lw $t0, 0($t0)
-	lea $t1, INT_MAX 			! store 0x7FFFFFFF into minval (to initialize)
-	lw $t1, 0($t1)	                  		
-        sw $t1, 0($t0)
-
-        ei                                      ! Enable interrupts
 
         lea $a0, BASE                           ! load base for pow
         lw $a0, 0($a0)
         lea $a1, EXP                            ! load power for pow
         lw $a1, 0($a1)
         lea $at, POW                            ! load address of pow
+
+        add $t0, $zero, $zero
+        add $t1, $zero, $zero
+
+        addi $t0, $t0, 1                        ! add 1 for beq tester
+        addi $t1, $t1, 1                        ! add 1 for beq tester
+        beq  $t0, $t1, CONTINUE
+        halt
+CONTINUE:
         jalr $at, $ra                           ! run pow
         lea $a0, ANS                            ! load base for pow
         sw $v0, 0($a0)
@@ -48,8 +31,6 @@ BASE:   .fill 2
 EXP:    .fill 8
 ANS:	.fill 0                                 ! should come out to 256 (BASE^EXP)
 
-INT_MAX: .fill 0x7FFFFFFF
-
 POW:    addi $sp, $sp, -1                       ! allocate space for old frame pointer
         sw $fp, 0($sp)
 
@@ -57,11 +38,14 @@ POW:    addi $sp, $sp, -1                       ! allocate space for old frame p
 
         bgt $a1, $zero, BASECHK                 ! check if $a1 is zero
         beq $zero, $zero, RET1                  ! if the exponent is 0, return 1
+        
+BASECHK:
+        bgt $a0, $zero, WORK                    ! if the base is 0, return 0
+        beq $zero, $zero, RET0                                 
 
-BASECHK:bgt $a0, $zero, WORK                    ! if the base is 0, return 0
-        beq $zero, $zero, RET0
+WORK:
+        addi $a1, $a1, -1                       ! decrement the power
 
-WORK:   addi $a1, $a1, -1                       ! decrement the power
         lea $at, POW                            ! load the address of POW
         addi $sp, $sp, -2                       ! push 2 slots onto the stack
         sw $ra, -1($fp)                         ! save RA to stack
@@ -93,15 +77,4 @@ AGAIN:  add $v0, $v0, $a0                       ! return value += argument0
         blt $t0, $a1, AGAIN                     ! while sentinel < argument, loop again
         jalr $ra, $zero                         ! return from mult
 
-timer_handler:
-        add $zero, $zero, $zero                 ! TODO FIX ME
-
-distance_tracker_handler:
-        add $zero, $zero, $zero                 ! TODO FIX ME
-
-
 initsp: .fill 0xA000
-ticks:  .fill 0xFFFF
-range:  .fill 0xFFFE
-maxval: .fill 0xFFFD
-minval: .fill 0xFFFC
