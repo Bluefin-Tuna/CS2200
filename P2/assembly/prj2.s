@@ -15,12 +15,15 @@ vector0:
         .fill 0x00000000                        ! device ID 7
         ! end vector table
 
-main:	lea $sp, initsp                         ! initialize the stack pointer
+main:
+        lea $sp, initsp                         ! initialize the stack pointer
         lw $sp, 0($sp)                          ! finish initialization
 
         lea $t0, vector0                        
         lea $t1, timer_handler
         sw $t1, 0($t0)
+        lea $t1, distance_tracker_handler
+        sw $t1, 1($t0)
 
         lea $t0, minval
         lw $t0, 0($t0)
@@ -56,10 +59,12 @@ POW:    addi $sp, $sp, -1                       ! allocate space for old frame p
         bgt $a1, $zero, BASECHK                 ! check if $a1 is zero
         beq $zero, $zero, RET1                  ! if the exponent is 0, return 1
 
-BASECHK:bgt $a0, $zero, WORK                    ! if the base is 0, return 0
+BASECHK:
+        bgt $a0, $zero, WORK                    ! if the base is 0, return 0
         beq $zero, $zero, RET0
 
-WORK:   addi $a1, $a1, -1                       ! decrement the power
+WORK:
+        addi $a1, $a1, -1                       ! decrement the power
         lea $at, POW                            ! load the address of POW
         addi $sp, $sp, -2                       ! push 2 slots onto the stack
         sw $ra, -1($fp)                         ! save RA to stack
@@ -74,19 +79,24 @@ WORK:   addi $a1, $a1, -1                       ! decrement the power
 
         beq $zero, $zero, FIN                   ! unconditional branch to FIN
 
-RET1:   add $v0, $zero, $zero                   ! return a value of 0
+RET1:
+        add $v0, $zero, $zero                   ! return a value of 0
 	addi $v0, $v0, 1                        ! increment and return 1
         beq $zero, $zero, FIN                   ! unconditional branch to FIN
 
 RET0:   add $v0, $zero, $zero                   ! return a value of 0
 
-FIN:	lw $fp, 0($fp)                          ! restore old frame pointer
+FIN:
+        lw $fp, 0($fp)                          ! restore old frame pointer
         addi $sp, $sp, 1                        ! pop off the stack
         jalr $ra, $zero
 
-MULT:   add $v0, $zero, $zero                   ! return value = 0
+MULT:
+        add $v0, $zero, $zero                   ! return value = 0
         addi $t0, $zero, 0                      ! sentinel = 0
-AGAIN:  add $v0, $v0, $a0                       ! return value += argument0
+
+AGAIN:
+        add $v0, $v0, $a0                       ! return value += argument0
         addi $t0, $t0, 1                        ! increment sentinel
         blt $t0, $a1, AGAIN                     ! while sentinel < argument, loop again
         jalr $ra, $zero                         ! return from mult
@@ -95,9 +105,8 @@ timer_handler:
         addi $sp, $sp, -1
         sw $k0, 0($sp)
         ei
-        addi $sp, $sp, -1
-        sw $t0, 0($sp)
-        addi $sp, $sp, -1
+        addi $sp, $sp, -2
+        sw $t0, 1($sp)
         sw $t1, 0($sp)
         lea $t0, ticks
         lw $t0, 0($t0)
@@ -113,8 +122,57 @@ timer_handler:
         reti
 
 distance_tracker_handler:
-        add $zero, $zero, $zero                 ! TODO FIX ME
+        addi $sp, $sp, -1
+        sw $k0, 0($sp)
+        ei
+        addi $sp, $sp, -3
+        sw $t0, 2($sp)
+        sw $t1, 1($sp)
+        sw $t2, 0($sp)
+        lea $t0, maxval
+        lw $t0, 0($t0)
+        lw $t0, 0($t0)
+        lea $t1, minval
+        lw $t1, 0($t1)
+        lw $t1, 0($t1)
+        in $t2, 1
+        bgt $t2, $t0, max
+        blt $t2, $t1, min
+        beq $zero, $zero, end
 
+max:
+        lea $t0, maxval
+        lw $t0, 0($t0)
+        sw $t2, 0($t0)
+        beq $zero, $zero, end
+
+min:
+        lea $t1, minval
+        lw $t1, 0($t1)
+        sw $t2, 0($t1)
+        beq $zero, $zero, end
+
+end:
+        lea $t2, range
+        lw $t2, 0($t2)
+        lea $t0, maxval
+        lw $t0, 0($t0)
+        lw $t0, 0($t0)
+        lea $t1, minval
+        lw $t1, 0($t1)
+        lw $t1, 0($t1)
+        nand $t1, $t1, $t1
+        addi $t1, $t1, 1
+        add $t0, $t0, $t1
+        sw $t0, 0($t2)
+        lw $t2, 0($sp)
+        lw $t1, 1($sp)
+        lw $t0, 2($sp)
+        addi $sp, $sp, 3
+        di
+        lw $k0, 0($sp)
+        addi $sp, $sp, 1
+        reti
 
 initsp: .fill 0xA000
 ticks:  .fill 0xFFFF
