@@ -122,38 +122,28 @@ timer_handler:
         reti
 
 distance_tracker_handler:
+        
         addi $sp, $sp, -1
         sw $k0, 0($sp)
         ei
-        addi $sp, $sp, -3
-        sw $t0, 2($sp)
-        sw $t1, 1($sp)
-        sw $t2, 0($sp)
-        lea $t0, maxval
-        lw $t0, 0($t0)
-        lw $t0, 0($t0)
-        lea $t1, minval
-        lw $t1, 0($t1)
-        lw $t1, 0($t1)
+        addi $sp, $sp, -5
+        sw $t0, 4($sp)
+        sw $t1, 3($sp)
+        sw $t2, 2($sp)
+        sw $s0, 1($sp)
+        sw $s1, 0($sp)
         in $t2, 1
-        bgt $t2, $t0, max
-        blt $t2, $t1, min
-        beq $zero, $zero, end
-
-max:
-        lea $t0, maxval
+max:    lea $t0, maxval
         lw $t0, 0($t0)
+        lw $t1, 0($t0)
+        blt $t2, $t1, min
         sw $t2, 0($t0)
-        beq $zero, $zero, end
-
-min:
-        lea $t1, minval
-        lw $t1, 0($t1)
-        sw $t2, 0($t1)
-        beq $zero, $zero, end
-
-end:
-        lea $t2, range
+min:    lea $t0, minval
+        lw $t0, 0($t0)
+        lw $t1, 0($t0)
+        bgt $t2, $t1, end
+        sw $t2, 0($t0)
+end:    lea $t2, range
         lw $t2, 0($t2)
         lea $t0, maxval
         lw $t0, 0($t0)
@@ -165,10 +155,12 @@ end:
         addi $t1, $t1, 1
         add $t0, $t0, $t1
         sw $t0, 0($t2)
-        lw $t2, 0($sp)
-        lw $t1, 1($sp)
-        lw $t0, 2($sp)
-        addi $sp, $sp, 3
+        lw $s1, 0($sp)
+        lw $s0, 1($sp)
+        lw $t2, 2($sp)
+        lw $t1, 3($sp)
+        lw $t0, 4($sp)
+        addi $sp, $sp, 5
         di
         lw $k0, 0($sp)
         addi $sp, $sp, 1
