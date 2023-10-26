@@ -46,19 +46,13 @@ void system_init(void) {
  * ----------------------------------------------------------------------------------
  */
 uint8_t mem_access(vaddr_t addr, char access, uint8_t data) {
-    // TODO: translate virtual address to physical, then perform the specified operation
     pte_t * t = vaddr_vpn(addr) + (pte_t * )(mem + PTBR * PAGE_SIZE);
     if (!(* t).valid) page_fault(addr);
     (* ((fte_t *) & frame_table[(* t).pfn])).referenced = 1;
-    paddr_t physAddr = (paddr_t)(((* t).pfn << OFFSET_LEN)) | vaddr_offset(addr);
+    paddr_t pa = (paddr_t)(((* t).pfn << OFFSET_LEN)) | vaddr_offset(addr);
     stats.accesses++;
-    /* Either read or write the data to the physical address
-       depending on 'rw' */
-    if (access == 'r') {
-
-    } else {
-
-    }
-
-    return 0;
+    if (access == 'r') return mem[pa];
+    (* t).dirty = 1;
+    mem[pa] = data;
+    return mem[pa];
 }
