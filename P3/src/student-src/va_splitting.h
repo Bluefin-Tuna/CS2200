@@ -17,12 +17,10 @@
  * ----------------------------------------------------------------------------------
  */
 static inline vpn_t vaddr_vpn(vaddr_t addr) {
-    // TODO: return the VPN from virtual address addr.
     return addr / PAGE_SIZE;
 }
 
 static inline uint16_t vaddr_offset(vaddr_t addr) {
-    // TODO: return the offset into the frame from virtual address addr.
     return addr % PAGE_SIZE;
 }
 

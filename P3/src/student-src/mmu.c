@@ -26,7 +26,7 @@ fte_t *frame_table;
 void system_init(void) {
     memset(mem, 0, PAGE_SIZE);
     frame_table = (fte_t *) mem;
-    (* frame_table).protected = 1;
+    frame_table->protected = 1;
 }
 
 /**
@@ -47,12 +47,12 @@ void system_init(void) {
  */
 uint8_t mem_access(vaddr_t addr, char access, uint8_t data) {
     pte_t * t = vaddr_vpn(addr) + (pte_t * )(mem + PTBR * PAGE_SIZE);
-    if (!(* t).valid) page_fault(addr);
-    (* ((fte_t *) & frame_table[(* t).pfn])).referenced = 1;
-    paddr_t pa = (paddr_t)(((* t).pfn << OFFSET_LEN)) | vaddr_offset(addr);
-    stats.accesses++;
+    if (!(t->valid)) page_fault(addr);
+    ((fte_t *) & frame_table[t->pfn])->referenced = 1;
+    paddr_t pa = (paddr_t)((t->pfn << OFFSET_LEN)) | vaddr_offset(addr);
+    ++stats.accesses;
     if (access == 'r') return mem[pa];
-    (* t).dirty = 1;
+    t->dirty = 1;
     mem[pa] = data;
     return mem[pa];
 }

@@ -28,11 +28,11 @@
 void proc_init(pcb_t *proc) {
     pfn_t pt = free_frame();
     memset(mem + pt * PAGE_SIZE, 0, PAGE_SIZE);
-    (* proc).saved_ptbr = pt;
+    proc->saved_ptbr = pt;
     fte_t * pf = (frame_table + pt);
-    (* pf).protected = 1;
-    (* pf).mapped = 1;
-    (* pf).process = proc;
+    pf->protected = 1;
+    pf->mapped = 1;
+    pf->process = proc;
 }
 
 /**
@@ -53,7 +53,7 @@ void proc_init(pcb_t *proc) {
  * ----------------------------------------------------------------------------------
  */
 void context_switch(pcb_t *proc) {
-    PTBR = ( * proc).saved_ptbr;
+    PTBR = proc->saved_ptbr;
 }
 
 /**
@@ -70,9 +70,17 @@ void context_switch(pcb_t *proc) {
  * ----------------------------------------------------------------------------------
  */
 void proc_cleanup(pcb_t *proc) {
-    for (size_t i = 0; i < NUM_PAGES; i++) {
-
+    for (size_t i = 0; i < NUM_PAGES; ++i) {
+        pte_t * t = (pte_t * )(mem + proc->saved_ptbr * PAGE_SIZE) + i;
+        if (t->valid) {
+            t->valid = 0;
+            frame_table[t->pfn].mapped = 0;
+        }
+        if (swap_exists(t)) swap_free(t);
     }
+    fte_t * cft = frame_table + proc->saved_ptbr;
+    cft->protected = 0;
+    cft->mapped = 0;
 }
 
 #pragma GCC diagnostic pop

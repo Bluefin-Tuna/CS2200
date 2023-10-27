@@ -27,14 +27,16 @@ pfn_t last_evicted = 0;
  * ----------------------------------------------------------------------------------
  */
 pfn_t free_frame(void) {
-    pfn_t victim_pfn;
-    victim_pfn = select_victim_frame();
-
-    // TODO: evict any mapped pages.
+    pfn_t victim_pfn = select_victim_frame();
     if (frame_table[victim_pfn].mapped) {
-
+        pte_t * t = (pte_t *)(mem + frame_table[victim_pfn].process->saved_ptbr * PAGE_SIZE) + frame_table[victim_pfn].vpn;
+        if (t->dirty) {
+            swap_write(t, mem + t->pfn * PAGE_SIZE);
+            ++stats.writebacks;
+        }
+        frame_table[victim_pfn].mapped = 0;
+        t->valid = 0;
     }
-
     return victim_pfn;
 }
 
@@ -69,7 +71,7 @@ pfn_t select_victim_frame() {
     if (replacement == RANDOM) {
         /* Play Russian Roulette to decide which frame to evict */
         pfn_t unprotected_found = NUM_FRAMES;
-        for (pfn_t i = 0; i < num_entries; i++) {
+        for (pfn_t i = 0; i < num_entries; ++i) {
             if (!frame_table[i].protected) {
                 unprotected_found = i;
                 if (prng_rand() % 2) {
@@ -85,11 +87,26 @@ pfn_t select_victim_frame() {
 
 
     } else if (replacement == FIFO) {
-        // TODO: Implement the FIFO algorithm here
-
+        static pfn_t fp = 0;
+        for (pfn_t i = fp; i < num_entries; ++i) {
+            if (!frame_table[i].protected) {
+                fp = (i != NUM_FRAMES - 1) * (i + 1);
+                return i;
+            }
+            if (i == NUM_FRAMES - 1) i = 0;
+        }
     } else if (replacement == CLOCKSWEEP) {
-        // TODO: Implement the clocksweep page replacement algorithm here 
-
+        static pfn_t cp = 0;
+        for (pfn_t i = cp; i < NUM_FRAMES; ++i) {
+            if (!frame_table[i].protected) {
+                if (frame_table[i].referenced) frame_table[i].referenced = 0;
+                else {
+                    cp = (i != NUM_FRAMES - 1) * (i + 1);
+                    return i;
+                }
+            }
+            if (i == NUM_FRAMES - 1) i = 0;
+        }
     }
 
     /* If every frame is protected, give up. This should never happen

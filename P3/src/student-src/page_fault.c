@@ -26,14 +26,21 @@
  * ----------------------------------------------------------------------------------
  */
 void page_fault(vaddr_t addr) {
-   // TODO: Get a new frame, then correctly update the page table and frame table
-
-
-   if(swap_exists(NULL)){
-
-   } else {
-
-   }
+   vpn_t vpn = vaddr_vpn(addr);
+   pte_t * ep = (pte_t *)(mem + PTBR * PAGE_SIZE) + vpn;
+   pfn_t pfn = free_frame();
+   ep->pfn = pfn;
+   ep->valid = 1;
+   ep->dirty = 0;
+   fte_t * ft = frame_table + pfn;
+   ft->protected = 0;
+   ft->mapped = 1;
+   ft->referenced = 1;
+   ft->process = current_process;
+   ft->vpn = vpn;
+   uint8_t * t = mem + pfn * PAGE_SIZE;
+   swap_exists(ep) ? swap_read(ep, t) : (void) memset(t, 0, PAGE_SIZE);
+   ++stats.page_faults;
 }
 
 #pragma GCC diagnostic pop
