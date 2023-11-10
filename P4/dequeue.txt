@@ -1,0 +1,41 @@
+pcb_t *dequeue(queue_t *queue)
+{
+    pcb_t * process;
+    pthread_mutex_lock(& queue_mutex);
+    if (is_empty(queue)) {
+        pthread_mutex_unlock(& queue_mutex);
+        return NULL;
+    }
+    process = queue->head;
+    if (scheduler_algorithm != PA) {
+        queue->head = queue->head->next;
+        if (queue->tail == process) {
+            queue->tail = NULL;
+        } 
+        process->next = NULL;
+    } else {
+        pcb_t * c = process;
+        pcb_t * mp = NULL, * pp = NULL;
+        unsigned int time = get_current_time();
+        double priority = priority_with_age(time, c);
+        while (c != NULL) {
+            double tp = priority_with_age(time, c);
+            if (!mp || tp > priority) {
+                priority = tp;
+                mp = c;
+            }
+            c = c->next;
+        }
+        c = process;
+        while (c != mp) {
+            pp = c;
+            c = c->next;
+        }
+        if (!pp) queue->head = queue->head->next;
+        else pp->next = c->next;
+        if (c == queue->tail) queue->tail = pp;
+        process = c;
+    }
+    pthread_mutex_unlock(& queue_mutex);
+    return process;
+}
