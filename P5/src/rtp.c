@@ -10,8 +10,8 @@
 
 /**
  * PLESE ENTER YOUR INFORMATION BELOW TO RECEIVE MANUAL GRADING CREDITS
- * Name: YOUR NAME
- * GTID: YOUR GTID
+ * Name: Tanush
+ * GTID: 903785867
  * Summer 2022
  */
 
@@ -38,11 +38,25 @@ typedef struct message {
  * @returns array of packets
  */
 packet_t *packetize(char *buffer, int length, int *count) {
-
-    packet_t *packets;
-
-    /* ----  FIXME  ---- */
-
+    packet_t * packets;
+    int pt = length / MAX_PAYLOAD_LENGTH;
+    int t = MAX_PAYLOAD_LENGTH;
+    if (length % MAX_PAYLOAD_LENGTH) {
+        t = length % MAX_PAYLOAD_LENGTH;
+        pt++;
+    }
+    packets = malloc(sizeof(packet_t) * (size_t) pt);
+    for (int i = 0; i < pt - 1; i++) {
+        packets[i].type = DATA;
+        packets[i].payload_length = MAX_PAYLOAD_LENGTH;
+        for (int j = 0; j < MAX_PAYLOAD_LENGTH; j++) packets[i].payload[j] = buffer[i * MAX_PAYLOAD_LENGTH + j];
+        packets[i].checksum = checksum(packets[i].payload, MAX_PAYLOAD_LENGTH);
+    }
+    packets[pt - 1].type = LAST_DATA;
+    packets[pt - 1].payload_length = t;
+    for (int i = 0; i < t; i++) packets[pt - 1].payload[i] = buffer[(pt - 1) * MAX_PAYLOAD_LENGTH + i];
+    packets[pt - 1].checksum = checksum(packets[pt - 1].payload, t);
+    *count = pt;
     return packets;
 }
 
@@ -64,10 +78,9 @@ packet_t *packetize(char *buffer, int length, int *count) {
  * @returns calcuated checksum
  */
 int checksum(char *buffer, int length) {
-
-    /* ----  FIXME  ---- */
-
-    return 0;
+    int cs = 0;
+    for (int i = 0; i < length; i++) cs += (i % 4 < 2) ? (buffer[i] * 3) : (buffer[i] / 3);
+    return cs;
 }
 
 
@@ -94,44 +107,35 @@ static void *rtp_recv_thread(void *void_ptr) {
                 pthread_cond_signal(&connection->send_cond);
                 break;
             }
-
-            /*  ----  FIXME  ----
-            *
-            * 1. check to make sure payload of packet is correct
-            * 2. send an ACK or a NACK, whichever is appropriate
-            * 3. if this is the last packet in a sequence of packets
-            *    and the payload was corrupted, make sure the loop
-            *    does not terminate
-            * 4. if the payload matches, add the payload to the buffer
-            */
-
-
-            /*
-            *  What if the packet received is not a data packet?
-            *  If it is a NACK or an ACK, the sending thread should
-            *  be notified so that it can finish sending the message.
-            *   
-            *  1. add the necessary fields to the CONNECTION data structure
-            *     in rtp.h so that the sending thread has a way to determine
-            *     whether a NACK or an ACK was received
-            *  2. signal the sending thread that an ACK or a NACK has been
-            *     received.
-            */
-
-
+            if (packet.type == LAST_DATA || packet.type == DATA) {
+                packet_t * t = malloc(sizeof(packet_t));
+                if (checksum(packet.payload, packet.payload_length) == packet.checksum) {
+                    t->type = ACK;
+                    buffer = buffer ? realloc(buffer, (unsigned long) (buffer_length + packet.payload_length)) : malloc((unsigned long) packet.payload_length);
+                    for (int i = 0; i < packet.payload_length; i++) buffer[buffer_length + i] = packet.payload[i];
+                    buffer_length += packet.payload_length;
+                } else {
+                    t->type = NACK;
+                    if (packet.type == LAST_DATA) packet.type = DATA;
+                }
+                net_send_packet(connection->net_connection_handle, t);
+                free(t);
+            } else if (packet.type == ACK || packet.type == NACK) {
+                pthread_mutex_lock(&connection->ack_mutex);
+                connection->ack = packet.type == ACK ? 1 : 2;
+                pthread_cond_signal(&connection->ack_cond);
+                pthread_mutex_unlock(&connection->ack_mutex);
+            }
         } while (packet.type != LAST_DATA);
 
         if (connection->alive == 1) {
-            /*  ----  FIXME: Part II-C ----
-            *
-            * Now that an entire message has been received, we need to
-            * add it to the queue to provide to the rtp client.
-            *
-            * 1. Add message to the received queue.
-            * 2. Signal the client thread that a message has been received.
-            */
-
-
+            message = malloc(sizeof(message_t));
+            message->length = buffer_length;
+            message->buffer = buffer;
+            pthread_mutex_lock(&connection->recv_mutex);
+            queue_add(&connection->recv_queue, message);
+            pthread_mutex_unlock(&connection->recv_mutex);
+            pthread_cond_signal(&connection->recv_cond);
         } else free(buffer);
 
     } while (connection->alive == 1);
@@ -156,7 +160,7 @@ static void *rtp_send_thread(void *void_ptr) {
         }
 
         if (connection->alive == 0) {
-            pthread_mutex_lock(&connection->send_mutex);
+            // pthread_mutex_lock(&connection->send_mutex);
             break;
         }
 
@@ -175,21 +179,12 @@ static void *rtp_send_thread(void *void_ptr) {
                 connection->alive = 0;
                 break;
             }
-
-            /*  ----FIX ME: Part II-D ---- 
-             * 
-             *  1. wait for the recv thread to notify you of when a NACK or
-             *     an ACK has been received
-             *  2. check the data structure for this connection to determine
-             *     if an ACK or NACK was received.  (You'll have to add the
-             *     necessary fields yourself)
-             *  3. If it was an ACK, continue sending the packets.
-             *  4. If it was a NACK, resend the last packet
-             */
-
-
+            pthread_mutex_lock(&connection->ack_mutex);
+            while (!connection->ack) pthread_cond_wait(&connection->ack_cond, &connection->ack_mutex);
+            if (connection->ack == 2) i--;
+            connection->ack = 0;
+            pthread_mutex_unlock(&connection->ack_mutex);
         }
-
         free(packet_array);
         free(message->buffer);
         free(message);
